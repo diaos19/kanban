@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f6f8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>看板</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<meta name="apple-mobile-web-app-title" content="看板">
+
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#fff; --txt:#1f2328; --muted:#6b7280; --faint:#9aa1ab;
+    --line:#e5e7eb; --accent:#2563eb; --ok:#059669; --warn:#d97706; --bad:#dc2626;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:16px; line-height:1.55;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .wrap{max-width:940px; margin:0 auto; padding:18px 14px 48px}
+
+  h1{font-size:18px; margin:0 0 2px; letter-spacing:.3px}
+  header.top{margin-bottom:16px}
+  .sub{color:var(--muted); font-size:13px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:14px}
+  .card h2{font-size:13px; margin:0 0 12px; color:var(--muted); font-weight:600; letter-spacing:.8px}
+
+  .dual{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px}
+  .bignum{font-size:34px; font-weight:700; line-height:1.15; letter-spacing:-.5px}
+  .bignum small{display:block; font-size:12px; font-weight:500; color:var(--muted); letter-spacing:0; margin-top:2px}
+
+  .grid4{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px}
+  .stat .k{font-size:12px; color:var(--muted); margin-bottom:2px}
+  .stat .v{font-size:20px; font-weight:650; font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:11px; font-weight:400; color:var(--muted)}
+
+  .bar{height:8px; background:#eef0f3; border-radius:99px; overflow:hidden; margin:7px 0 5px}
+  .bar > i{display:block; height:100%; border-radius:99px; transition:width .35s ease}
+  .rowline{display:flex; justify-content:space-between; gap:8px; font-size:13.5px; color:var(--muted)}
+  .subj{margin-bottom:15px}
+  .subj:last-child{margin-bottom:0}
+  .subj .name{font-weight:600; color:var(--txt); font-size:14.5px}
+  .subj .name em{font-style:normal; font-weight:400; color:var(--faint); font-size:12px; margin-left:6px}
+
+  .entry{display:grid; grid-template-columns:1fr; gap:10px}
+  .f{display:flex; flex-direction:column; gap:5px; font-size:12.5px; color:var(--muted)}
+  input,select,button{font:inherit; color:inherit}
+  input,select{
+    padding:11px 12px; border:1px solid var(--line); border-radius:11px;
+    background:#fbfbfc; width:100%; font-size:16px;
+  }
+  input:focus,select:focus{outline:2px solid #bfdbfe; border-color:#93c5fd; background:#fff}
+  button{
+    min-height:46px; padding:11px 16px; border-radius:11px; border:1px solid var(--line);
+    background:#fff; cursor:pointer; transition:.15s; font-size:15px;
+  }
+  button:active{transform:scale(.985)}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+  button.ghost{color:var(--muted); font-size:14px; min-height:42px}
+
+  .logs{display:flex; flex-direction:column}
+  .log{display:grid; grid-template-columns:1fr auto; gap:2px 10px; padding:11px 0; border-bottom:1px solid var(--line)}
+  .log:last-child{border-bottom:none}
+  .log .l1{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+  .log b{font-weight:600; font-size:14.5px}
+  .log .hrs{font-variant-numeric:tabular-nums; color:var(--accent); font-weight:600; font-size:14px}
+  .log .dt{color:var(--faint); font-size:12.5px}
+  .log .note{grid-column:1 / 2; color:var(--muted); font-size:13px; word-break:break-word}
+  .del{
+    grid-row:1 / 3; grid-column:2; align-self:center;
+    background:none; border:none; color:#c9ced6; font-size:20px; line-height:1;
+    min-height:auto; padding:6px 8px; border-radius:8px;
+  }
+  .del:active{background:#f3f4f6; color:var(--bad)}
+
+  .ms{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px dashed var(--line); font-size:14px}
+  .ms:last-child{border-bottom:none}
+  .ms.done{color:#c3c8d0; text-decoration:line-through}
+  .ms .d{font-variant-numeric:tabular-nums; font-weight:650; white-space:nowrap; font-size:14px}
+  .ms .d.hot{color:var(--bad)} .ms .d.soon{color:var(--warn)}
+  .ms .md{display:block; color:var(--faint); font-size:11.5px}
+
+  .tag{display:inline-block; background:#eef4ff; color:#1d4ed8; border-radius:99px; padding:2px 10px; font-size:12.5px; font-weight:600}
+  .hint{font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.6}
+  .tools{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px}
+  .tools .full{grid-column:1 / -1}
+  .warnbox{background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; padding:11px 14px; border-radius:12px; font-size:13px; margin-bottom:12px; display:none}
+  footer{color:#a8aeb8; font-size:12px; text-align:center; margin-top:22px; line-height:1.9}
+
+  @media(min-width:760px){
+    h1{font-size:20px}
+    .dual{grid-template-columns:1fr 1fr 1fr}
+    .dual .third{grid-column:auto}
+    .grid4{grid-template-columns:repeat(4,1fr)}
+    .entry{grid-template-columns:150px 160px 110px 1fr auto; align-items:end}
+    .tools{grid-template-columns:repeat(3,auto); justify-content:start}
+    .tools .full{grid-column:auto}
+    .bignum{font-size:40px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>考研看板</h1>
+    <div class="sub" id="todayLabel"></div>
+    <div class="sub" id="phaseLabel" style="margin-top:6px"></div>
+  </header>
+
+  <div class="warnbox" id="storageWarn">
+    浏览器禁用了本地存储，这次的记录关掉页面就没了。换 Edge / Chrome / Safari 打开同一份文件即可正常保存。
+  </div>
+
+  <div class="dual">
+    <div class="card" style="margin:0">
+      <div class="sub">距初试</div>
+      <div class="bignum" id="examDays">—<small>2027-12-18</small></div>
+    </div>
+    <div class="card" style="margin:0">
+      <div class="sub">距离职</div>
+      <div class="bignum" id="resignDays">—<small>2027-03-15</small></div>
+    </div>
+  </div>
+
+  <div class="grid4">
+    <div class="stat"><div class="k">累计在桌</div><div class="v" id="totalHours">0 <small>/2200h</small></div></div>
+    <div class="stat"><div class="k">本周 / 配额</div><div class="v" id="weekHours">0 <small>/0h</small></div></div>
+    <div class="stat"><div class="k">还差</div><div class="v" id="remain">2200 <small>h</small></div></div>
+    <div class="stat"><div class="k">对比计划</div><div class="v" id="planDiff">— <small>h</small></div></div>
+  </div>
+
+  <div class="card">
+    <h2>记一笔</h2>
+    <form class="entry" id="entryForm">
+      <label class="f"><span>日期</span><input type="date" id="fDate" required></label>
+      <label class="f"><span>科目</span>
+        <select id="fSubject">
+          <option value="math">数学三</option>
+          <option value="english">英语一</option>
+          <option value="major">专业课</option>
+          <option value="politics">政治</option>
+          <option value="other">机动 / 其他</option>
+        </select>
+      </label>
+      <label class="f"><span>在桌小时</span><input type="number" id="fHours" inputmode="decimal" step="0.5" min="0" max="16" placeholder="1.5" required></label>
+      <label class="f"><span>一句话（卡在哪，可不填）</span><input type="text" id="fNote" maxlength="80" placeholder="例：极限定义没看懂"></label>
+      <button class="primary" type="submit">记下这笔</button>
+    </form>
+    <div class="hint">记「在桌小时」，含走神和休息。净学习时间大约是它的 7 成。</div>
+  </div>
+
+  <div class="card">
+    <h2>四科进度</h2>
+    <div id="subjectList"></div>
+    <div class="hint">目标按在桌小时分配：数学 860 · 英语 600 · 专业课 500 · 政治 190 · 机动 50 = 2200。四科合计不足 2200 是正常的，差的是机动和模考。</div>
+  </div>
+
+  <div class="card">
+    <h2>最近记录</h2>
+    <div class="logs" id="logList"></div>
+    <div class="hint" id="emptyHint">还没有记录。今天学了多少，先记一笔。</div>
+    <div class="tools">
+      <button class="ghost" id="exportBtn" type="button">导出 JSON</button>
+      <button class="ghost" id="importBtn" type="button">导入 JSON</button>
+      <button class="ghost full" id="clearBtn" type="button">清空全部记录</button>
+      <input type="file" id="fileInput" accept=".json,application/json" style="display:none">
+    </div>
+    <div class="hint">换设备时：在新设备上点「导入 JSON」，选中旧设备导出的文件，重复记录会自动跳过。</div>
+  </div>
+
+  <div class="card">
+    <h2>里程碑</h2>
+    <div id="msList"></div>
+  </div>
+
+  <footer>
+    数据只存在这台设备的浏览器里，不上传任何服务器。<br>
+    换手机、换浏览器、清理缓存前，先「导出 JSON」存一份。
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var STORE_KEY = 'kaoyan-dashboard-v1';
+  var EXAM_DATE = '2027-12-18';
+  var RESIGN_DATE = '2027-03-15';
+  var TOTAL_TARGET = 2200;
+
+  var PHASES = [
+    { from:'2026-11-10', to:'2027-02-05', name:'在职 · 春节前', quota:10.5, daily:1.5 },
+    { from:'2027-02-06', to:'2027-02-20', name:'春节', quota:3.5, daily:0.5 },
+    { from:'2027-02-21', to:'2027-03-14', name:'在职 · 交接期', quota:10.5, daily:1.5 },
+    { from:'2027-03-15', to:'2027-03-31', name:'搬家 · 安顿', quota:7, daily:1 },
+    { from:'2027-04-01', to:'2027-08-31', name:'全职一期', quota:45, daily:7.5 },
+    { from:'2027-09-01', to:'2027-12-18', name:'冲刺', quota:52, daily:8 }
+  ];
+
+  var SUBJECTS = [
+    { key:'math',     name:'数学三', target:860, color:'#2563eb' },
+    { key:'english',  name:'英语一', target:600, color:'#db2777' },
+    { key:'major',    name:'专业课', target:500, color:'#059669' },
+    { key:'politics', name:'政治',   target:190, color:'#d97706' }
+  ];
+
+  var SUBJECT_NAMES = { math:'数学三', english:'英语一', major:'专业课', politics:'政治', other:'机动' };
+
+  var MS = [
+    { date:'2026-12-31', title:'高数上册基础一轮' },
+    { date:'2027-02-28', title:'高数全部 + 线代开始；单词第一轮' },
+    { date:'2027-03-31', title:'锁定院校专业，拿到参考书和真题' },
+    { date:'2027-06-30', title:'数学一轮完；英语真题第一遍' },
+    { date:'2027-09-01', title:'政治开始；专业课背诵第一轮' },
+    { date:'2027-10-15', title:'网上报名' },
+    { date:'2027-11-10', title:'网上确认' },
+    { date:'2027-12-18', title:'初试' }
+  ];
+
+  /* ---------- 工具函数 ---------- */
+  function pad(n){ return String(n).length < 2 ? '0' + n : String(n); }
+  function fmt(d){ return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function parse(s){ var p = String(s).split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function today(){ var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function diffDays(a, b){ return Math.round((parse(b) - parse(a)) / 86400000); }
+  function weekStart(){
+    var t = today();
+    var off = (t.getDay() + 6) % 7;
+    return new Date(t.getFullYear(), t.getMonth(), t.getDate() - off);
+  }
+  function fmtHours(n){
+    if (!isFinite(n)) return '—';
+    return (Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, '');
+  }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+  function uid(){ return Date.now() * 1000 + Math.floor(Math.random() * 1000); }
+
+  /* ---------- 存储 ---------- */
+  var storageOK = true;
+  var state = { logs: [] };
+
+  function load(){
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        var obj = JSON.parse(raw);
+        if (obj && Array.isArray(obj.logs)) state.logs = obj.logs;
+      }
+    } catch (e) {
+      storageOK = false;
+    }
+    if (!storageOK) document.getElementById('storageWarn').style.display = 'block';
+  }
+  function save(){
+    if (!storageOK) return;
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch (e) {
+      storageOK = false;
+      document.getElementById('storageWarn').style.display = 'block';
+    }
+  }
+
+  /* ---------- 计算 ---------- */
+  function totalHours(){
+    return state.logs.reduce(function(s, l){ return s + (Number(l.hours) || 0); }, 0);
+  }
+  function hoursOf(k){
+    return state.logs.filter(function(l){ return l.subject === k; })
+      .reduce(function(s, l){ return s + (Number(l.hours) || 0); }, 0);
+  }
+  function weekHours(){
+    var ws = fmt(weekStart());
+    return state.logs.filter(function(l){ return l.date >= ws; })
+      .reduce(function(s, l){ return s + (Number(l.hours) || 0); }, 0);
+  }
+  function currentPhase(){
+    var t = fmt(today());
+    for (var i = 0; i < PHASES.length; i++){
+      if (t >= PHASES[i].from && t <= PHASES[i].to) return PHASES[i];
+    }
+    return t < PHASES[0].from ? PHASES[0] : PHASES[PHASES.length - 1];
+  }
+  function plannedUpTo(dateStr){
+    var sum = 0;
+    PHASES.forEach(function(p){
+      if (dateStr < p.from) return;
+      var end = dateStr < p.to ? dateStr : p.to;
+      var days = diffDays(p.from, end) + 1;
+      if (days > 0) sum += days * p.daily;
+    });
+    return sum;
+  }
+
+  /* ---------- 渲染 ---------- */
+  function renderHead(){
+    var t = today();
+    var names = ['日','一','二','三','四','五','六'];
+    document.getElementById('todayLabel').textContent =
+      t.getFullYear() + ' 年 ' + (t.getMonth() + 1) + ' 月 ' + t.getDate() + ' 日 · 周' + names[t.getDay()];
+
+    var ph = currentPhase();
+    var weekEnd = new Date(weekStart().getTime() + 6 * 86400000);
+    var left = diffDays(fmt(t), fmt(weekEnd));
+    document.getElementById('phaseLabel').innerHTML =
+      '<span class="tag">' + esc(ph.name) + '</span> 本周还剩 ' + Math.max(0, left) + ' 天';
+
+    var ex = diffDays(fmt(t), EXAM_DATE);
+    document.getElementById('examDays').innerHTML =
+      Math.max(0, ex) + '<small>天 · 2027-12-18</small>';
+
+    var rs = diffDays(fmt(t), RESIGN_DATE);
+    document.getElementById('resignDays').innerHTML = rs >= 0
+      ? rs + '<small>天 · 2027-03-15</small>'
+      : Math.abs(rs) + '<small>天前已离职</small>';
+  }
+
+  function renderStats(){
+    var tot = totalHours();
+    document.getElementById('totalHours').innerHTML =
+      fmtHours(tot) + ' <small>/2200h</small>';
+
+    var wk = weekHours();
+    var ph = currentPhase();
+    var wkEl = document.getElementById('weekHours');
+    wkEl.innerHTML = fmtHours(wk) + ' <small>/' + fmtHours(ph.quota) + 'h</small>';
+    wkEl.style.color = wk >= ph.quota ? 'var(--ok)' : (wk >= ph.quota * 0.85 ? 'var(--warn)' : 'inherit');
+
+    var remain = Math.max(0, TOTAL_TARGET - tot);
+    document.getElementById('remain').innerHTML = fmtHours(remain) + ' <small>h</small>';
+
+    var planned = plannedUpTo(fmt(today()));
+    var delta = tot - planned;
+    var el = document.getElementById('planDiff');
+    el.innerHTML = (delta >= 0 ? '+' : '−') + fmtHours(Math.abs(delta)) + ' <small>h</small>';
+    el.style.color = delta >= 0 ? 'var(--ok)' : (Math.abs(delta) > 20 ? 'var(--bad)' : 'var(--warn)');
+  }
+
+  function renderSubjects(){
+    var html = '';
+    SUBJECTS.forEach(function(s){
+      var h = hoursOf(s.key);
+      var p = Math.min(100, h / s.target * 100);
+      html += '<div class="subj">' +
+        '<div class="rowline">' +
+          '<span class="name">' + esc(s.name) + '<em>' + fmtHours(h) + ' / ' + s.target + ' h</em></span>' +
+          '<span>' + Math.round(p) + '%</span>' +
+        '</div>' +
+        '<div class="bar"><i style="width:' + p + '%;background:' + s.color + '"></i></div>' +
+      '</div>';
+    });
+    document.getElementById('subjectList').innerHTML = html;
+  }
+
+  function renderLogs(){
+    var logs = state.logs.slice().sort(function(a, b){
+      if (a.date === b.date) return (b.id || 0) - (a.id || 0);
+      return a.date < b.date ? 1 : -1;
+    }).slice(0, 40);
+
+    var html = '';
+    logs.forEach(function(l){
+      html += '<div class="log">' +
+        '<div class="l1">' +
+          '<b>' + esc(SUBJECT_NAMES[l.subject] || '其他') + '</b>' +
+          '<span class="hrs">' + fmtHours(Number(l.hours)) + 'h</span>' +
+          '<span class="dt">' + esc(l.date) + '</span>' +
+        '</div>' +
+        (l.note ? '<div class="note">' + esc(l.note) + '</div>' : '') +
+        '<button class="del" data-id="' + esc(l.id) + '" title="删除">&times;</button>' +
+      '</div>';
+    });
+    document.getElementById('logList').innerHTML = html;
+    document.getElementById('emptyHint').style.display = logs.length ? 'none' : 'block';
+  }
+
+  function renderMilestones(){
+    var t = today();
+    var html = '';
+    MS.forEach(function(m){
+      var d = diffDays(fmt(t), m.date);
+      var cls = d < 0 ? 'done' : '';
+      var dcls = d < 0 ? '' : (d <= 14 ? 'hot' : (d <= 45 ? 'soon' : ''));
+      var txt = d < 0 ? '已过' : (d + ' 天');
+      html += '<div class="ms ' + cls + '">' +
+        '<span>' + esc(m.title) + '<span class="md">' + esc(m.date) + '</span></span>' +
+        '<span class="d ' + dcls + '">' + txt + '</span>' +
+      '</div>';
+    });
+    document.getElementById('msList').innerHTML = html;
+  }
+
+  function renderAll(){
+    renderHead(); renderStats(); renderSubjects(); renderLogs(); renderMilestones();
+  }
+
+  /* ---------- 记录与导入 ---------- */
+  function addLog(date, subject, hours, note){
+    state.logs.push({ id: uid(), date: date, subject: subject, hours: hours, note: note || '' });
+  }
+
+  function mergeLogs(incoming){
+    function contentKey(l){ return ['k', l.date, l.subject, Number(l.hours), l.note || ''].join('|'); }
+    var seen = {};
+    state.logs.forEach(function(l){
+      seen[contentKey(l)] = true;
+      if (l.id) seen['id:' + l.id] = true;
+    });
+    var added = 0, dup = 0;
+    incoming.forEach(function(l){
+      if (!l || !l.date || !isFinite(Number(l.hours))) return;
+      var ck = contentKey(l);
+      var ik = l.id ? 'id:' + l.id : null;
+      if (seen[ck] || (ik && seen[ik])) { dup++; return; }
+      seen[ck] = true;
+      if (ik) seen[ik] = true;
+      state.logs.push({
+        id: l.id || uid(),
+        date: String(l.date),
+        subject: SUBJECT_NAMES[l.subject] ? l.subject : 'other',
+        hours: Number(l.hours),
+        note: l.note || ''
+      });
+      added++;
+    });
+    return { added: added, dup: dup };
+  }
+
+  /* ---------- 交互 ---------- */
+  document.getElementById('entryForm').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var date = document.getElementById('fDate').value;
+    var subject = document.getElementById('fSubject').value;
+    var hours = parseFloat(document.getElementById('fHours').value);
+    var note = document.getElementById('fNote').value.trim();
+    if (!date || !isFinite(hours) || hours <= 0) return;
+
+    addLog(date, subject, hours, note);
+    save();
+    document.getElementById('fHours').value = '';
+    document.getElementById('fNote').value = '';
+    renderAll();
+  });
+
+  document.getElementById('logList').addEventListener('click', function(ev){
+    var btn = ev.target.closest('button.del');
+    if (!btn) return;
+    var id = btn.getAttribute('data-id');
+    state.logs = state.logs.filter(function(l){ return String(l.id) !== String(id); });
+    save(); renderAll();
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'kaoyan-logs-' + fmt(today()) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  });
+
+  document.getElementById('importBtn').addEventListener('click', function(){
+    document.getElementById('fileInput').click();
+  });
+
+  document.getElementById('fileInput').addEventListener('change', function(ev){
+    var file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      var data;
+      try { data = JSON.parse(String(reader.result)); }
+      catch (e) { alert('这个文件不是有效的 JSON，换一个试试。'); return; }
+      var list = Array.isArray(data) ? data : (data && Array.isArray(data.logs) ? data.logs : null);
+      if (!list) { alert('文件里找不到记录列表（需要 logs 数组）。'); return; }
+      var r = mergeLogs(list);
+      save(); renderAll();
+      alert('导入完成：新增 ' + r.added + ' 条，跳过 ' + r.dup + ' 条重复。');
+    };
+    reader.onerror = function(){ alert('读取文件失败，换个浏览器试试。'); };
+    reader.readAsText(file);
+    ev.target.value = '';
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function(){
+    if (!state.logs.length) return;
+    if (!confirm('清空全部 ' + state.logs.length + ' 条记录？不能撤销，建议先导出。')) return;
+    state.logs = [];
+    save(); renderAll();
+  });
+
+  /* ---------- 启动 ---------- */
+  load();
+  document.getElementById('fDate').value = fmt(today());
+  renderAll();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
